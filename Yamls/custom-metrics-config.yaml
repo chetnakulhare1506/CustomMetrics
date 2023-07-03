@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: custom-metrics
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adapter-config
+  namespace: custom-metrics
+data:
+  adapter-config-data: |
+    rules:
+    - seriesQuery: '{__name__=~"^service_pending_queries"}'
+      resources:
+        overrides:
+          namespace:
+            resource: "namespace"
+          service:
+            resource: "service"
+          pod:
+            resource: "pod"
+      name:
+        matches: "(.*)"
+      metricsQuery: sum_over_time(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: armorblox-autodeploy
+spec:
+  selector:
+    matchLabels:
+      app: auto-deploy
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: auto-deploy
+      annotations:
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+        - name: auto-deploy
+          image: us.gcr.io/starry-academy-177207/armorblox/auto-scale-svc:chetna_auto_scale_10
+          ports:
+            - containerPort: 8080
+---
+# tika service
+apiVersion: v1
+kind: Service
+metadata:
+  name: auto-deploy
+  namespace: custom-metrics
+  labels:
+    app: auto-deploy
+spec:
+  selector:
+    app: auto-deploy
+  ports:
+    - name: metrics-svc-port
+      protocol: TCP
+      port: 8080
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autodeploy-sm
+  namespace: custom-metrics
+  labels:
+    release: armorblox-monitoring
+spec:
+  jobLabel: auto-deploy
+  selector:
+    matchLabels:
+      app: auto-deploy
+  namespaceSelector:
+    matchNames:
+      - default
+      - custom-metrics
+      - auto-deploy
+  endpoints:
+    - port: metrics-svc-port
+      interval: 10s
+      path: /metrics
